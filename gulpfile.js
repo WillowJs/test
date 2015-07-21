@@ -1,3 +1,5 @@
+'use strict';
+
 var gulp = require('gulp');
 var fs = require('fs');
 var async = require('async');
@@ -11,7 +13,7 @@ var assign = require('lodash.assign');
 var source = require('vinyl-source-stream');
 var buffer = require('vinyl-buffer');
 var sourcemaps = require('gulp-sourcemaps');
-var rename = require("gulp-rename");
+var rename = require('gulp-rename');
 // var scripts = require('./gulp/scripts');
 // var styles = require('./gulp/styles');
 // var watch = require('./gulp/watch');
@@ -44,7 +46,7 @@ b.on('log', gutil.log); // output build logs to terminal
 /*
  * SHARED TASKS
  */
-gulp.task('client-components', function(cb) {
+gulp.task('client-components', function(next) {
 
 	var componentsDir = './components';
 
@@ -56,13 +58,15 @@ gulp.task('client-components', function(cb) {
 			fs.readdir(componentsDir, cb);
 		}],
 		filter: ['read', function(cb, data) {
-			async.filter(data.read, function(file, cb) {
+			async.filter(data.read, function(file, cb1) {
 				fs.stat(path.join(componentsDir, file), function(err, stat) {
-					if(err) return cb(false);
-					cb(stat.isDirectory());
+					if(err) {
+						return cb(false);
+					}
+					cb1(stat.isDirectory());
 				});
-			}, function(data) {
-				cb(null, data);
+			}, function(data1) {
+				cb(null, data1);
 			});
 		}],
 		write: ['mkdir', 'filter', function(cb, data) {
@@ -70,45 +74,69 @@ gulp.task('client-components', function(cb) {
 
 			// @todo override require to keep track of what modules are required
 
-			async.each(data.filter, function(file, cb) {
+			async.each(data.filter, function(file, cb1) {
 				var p = path.join(componentsDir, file);
-				if(p.charAt(0) !== '/' && p.charAt(0) !==  '.') {
+				if(p.charAt(0) !== '/' && p.charAt(0) !== '.') {
 					p = './' + p;
 				}
 				var comp = require(p);
 				var f = genCompClientFile(comp);
-				console.log(f);
-				fs.writeFile(
-					path.join('./assets/scripts/components', file+'.js'), 
-					f,
-					cb
-				);
+				console.log(path.join('./assets/scripts/components', file));
+				mkdirp(path.join('./assets/scripts/components', file), function(err, data) {
+					fs.writeFile(
+						path.join('./assets/scripts/components', file, 'index.js'),
+						f,
+						cb1
+					);
+				});
 			}, cb);
 		}]
-	}, cb);
+	}, next);
 });
 
 function genCompClientFile(comp) {
-	var requires = comp.requires();
-	var file = '';
+	var requires = comp.prototype._willow.requires;
+	var file = '\'use strict\';\n';
 	file += 'var React = require(\'react\');\n';
-	file += 'var WillowComponent = require(\'willow-component/class\');\n';
-	file += 'var comp = '+comp.toString()+';\n';
-	file += 'comp.contents.mixins = comp.contents.mixins || [];\n';
-	file += 'comp.contents.mixins.unshift({\n';
-	file += '	componentWillMount: function() {\n';
-	file += '		this.requires = {};\n';
+	file += 'var Willow = require(\'willow-component\');\n';
+	file += 'var compJson = '+comp.toString()+';\n';
+	file += 'var Component = Willow.createClass(compJson.contents);\n';
+	file += 'Component.prototype.requires = {};\n';
+
 	for(var i in requires.both) {
-		file += '		this.requires[\''+i+'\'] = require(\''+requires.both[i]+'\');\n';
+		file += 'Component.prototype.requires[\''+i+'\'] = require(\''+requires.both[i]+'\');\n';
 	}
 	for(var j in requires.client) {
-		file += '		this.requires[\''+j+'\'] = require(\''+requires.client[j]+'\');\n';
+		file += 'Component.prototype.requires[\''+j+'\'] = require(\''+requires.client[i]+'\');\n';
 	}
-	file += '	}\n';
-	file += '});\n';
-	file += 'module.exports = (new WillowComponent(comp.contents, comp.events, comp.metadata, comp.requires)).build();';
-
+	file += 'module.exports = Component;\n';
 	return file;
+	// var requires = comp.requires();
+	// var file = '';
+	// file += 'var React = require(\'react\');\n';
+	// file += 'var WillowComponent = require(\'willow-component/class\');\n';
+	// file += 'var WillowError = require(\'willow-error\');\n';
+	// file += 'var validator = require(\'validator\');\n';
+	// file += 'var _ = require(\'lodash\');\n';
+	// file += 'var underscoreDeepExtend = require(\'underscore-deep-extend\');\n';
+	// file += 'var async = require(\'async\');\n';
+	// file += 'var eventRunner = require(\'willow-component/libs/event-runner\');\n';
+	// file += 'var comp = '+comp.toString()+';\n';
+	// file += 'comp.contents.mixins = comp.contents.mixins || [];\n';
+	// file += 'comp.contents.mixins.unshift({\n';
+	// file += '	componentWillMount: function() {\n';
+	// file += '		this.requires = {};\n';
+	// for(var i in requires.both) {
+	// 	file += '		this.requires[\''+i+'\'] = require(\''+requires.both[i]+'\');\n';
+	// }
+	// for(var j in requires.client) {
+	// 	file += '		this.requires[\''+j+'\'] = require(\''+requires.client[j]+'\');\n';
+	// }
+	// file += '	}\n';
+	// file += '});\n';
+	// file += 'module.exports = (new WillowComponent(comp.contents, comp.events, comp.metadata, comp.requires)).build();';
+
+	// return file;
 }
 
 gulp.task('bundle', bundle);
@@ -124,7 +152,7 @@ function bundle() {
 		loadMaps: true
 	})) // loads map from browserify file
 	.pipe(sourcemaps.write()) // writes .map file
-	.pipe(rename("bundle.js"))
+	.pipe(rename('bundle.js'))
 	.pipe(gulp.dest('./assets/scripts'));
 }
 
@@ -185,7 +213,7 @@ function bundle() {
 //  * SERVE TASKS
 //  */
 
-gulp.task('serve', ['watch', 'server']);
+gulp.task('serve', ['client-components', 'bundle', 'server']);
 
 // gulp.task('fonts', function () {
 // 	return gulp.src('node_modules/font-awesome/fonts/*')
@@ -216,7 +244,7 @@ gulp.task('watch', function() {
 		['server']
 	);
 });
-// 
+
 gulp.task('server', function() {
 	function startServer() {
 		if(server && serverRunning) {
@@ -240,6 +268,6 @@ gulp.task('server', function() {
 			});
 		}
 	}
-	
+
 	startServer();
 });

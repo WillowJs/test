@@ -1,7 +1,12 @@
-var WillowComponent = require('willow-component');
-module.exports = WillowComponent.extend({
+'use strict';
+var Willow = require('willow-component');
+module.exports = Willow.createClass({
 	render: function() {
-		return <h1>test</h1>;
+		var FileUploadComponent = this.requires.FileUploadComponent;
+		return <div>
+			<h1>test</h1>
+			<FileUploadComponent />
+		</div>;
 	}
 })
-.require('_', 'lodash', 'client');
+.require('FileUploadComponent', '../file-upload/index.js', 'both');

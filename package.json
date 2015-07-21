@@ -10,9 +10,13 @@
   "description": "An environment for testing willow server and components. This will eventually be bundled up into a cli tool.",
   "readme": "README.md",
   "dependencies": {
+    "async": "^1.3.0",
     "lodash": "^3.10.0",
     "react": "^0.13.3",
+    "underscore-deep-extend": "0.0.5",
+    "validator": "^3.41.2",
     "willow-component": "willowjs/willow-component",
+    "willow-error": "willowjs/willow-error",
     "willow-server": "willowjs/willow-server"
   },
   "devDependencies": {
