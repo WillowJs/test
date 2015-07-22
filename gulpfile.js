@@ -109,6 +109,8 @@ function genCompClientFile(comp) {
 	for(var j in requires.client) {
 		file += 'Component.prototype.requires[\''+j+'\'] = require(\''+requires.client[i]+'\');\n';
 	}
+	file += 'Component.prototype._willow.events = compJson.events;\n';
+	file += 'Component.prototype._willow.metadata = compJson.metadata;\n';
 	file += 'module.exports = Component;\n';
 	return file;
 	// var requires = comp.requires();
