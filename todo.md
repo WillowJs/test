@@ -1,4 +1,5 @@
 # immediate
+- test performance of event handler (have button toggle visibility and see if there is a lag)
 - try to get file upload button to pull up dialog when clicked
 
 # short term
