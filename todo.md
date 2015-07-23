@@ -3,6 +3,7 @@
 	- save file to aws
 
 # short term
+- come up with demo screencast
 - server code is not being removed from client bundle.js
 - add ability to specify component specific configurations (mostly for the server)
 	- for example, where should my file-upload button store files, aws credentials, etc
