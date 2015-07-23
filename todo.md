@@ -1,9 +1,8 @@
 # immediate
-- test performance of event handler (have button toggle visibility and see if there is a lag)
-- try to get file upload button to pull up dialog when clicked
+- get test file upload component working
 
 # short term
-- get test file upload component working
+- server code is not being removed from client bundle.js
 
 # mid term
 - clean up the way that components are structured

@@ -107,7 +107,7 @@ function genCompClientFile(comp) {
 		file += 'Component.prototype.requires[\''+i+'\'] = require(\''+requires.both[i]+'\');\n';
 	}
 	for(var j in requires.client) {
-		file += 'Component.prototype.requires[\''+j+'\'] = require(\''+requires.client[i]+'\');\n';
+		file += 'Component.prototype.requires[\''+j+'\'] = require(\''+requires.client[j]+'\');\n';
 	}
 	file += 'Component.prototype._willow.events = compJson.events;\n';
 	file += 'Component.prototype._willow.metadata = compJson.metadata;\n';
