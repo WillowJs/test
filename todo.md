@@ -1,11 +1,16 @@
 # immediate
 - get test file upload component working
+	- save file to aws
 
 # short term
 - server code is not being removed from client bundle.js
+- add ability to specify component specific configurations (mostly for the server)
+	- for example, where should my file-upload button store files, aws credentials, etc
+- update willow-server to just be express middleware... no need to introduce a new paradigm
+
 
 # mid term
-- clean up the way that components are structured
+- clean up the way that components directories are structured
 - only triggering events in certain contexts (from nodes)
 
 # long term
