@@ -1,4 +1,9 @@
 # immediate
+- Figure out error...
+	Warning: React.createElement: type should not be null or undefined. It should be a string (for DOM elements) or a ReactClass (for composite components).
+
+	Warning: Only functions or strings can be mounted as React components.
+- lodash was way too large, so in the process of only grabbing the necessary functionality
 - get test file upload component working
 	- save file to aws
 

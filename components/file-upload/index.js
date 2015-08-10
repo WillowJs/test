@@ -1,7 +1,7 @@
 'use strict';
 /*global FileDrop*/
 var Willow = require('willow-component');
-module.exports = Willow.createClass({
+var FileUpload = Willow.createClass({
 	componentWillMount: function() {
 		this.startTime = null;
 	},
@@ -25,8 +25,10 @@ module.exports = Willow.createClass({
 			</div>
 		);
 	}
-})
-.require('filedrop', 'filedrop', 'client')
+});
+FileUpload.require('filedrop', 'filedrop', 'client')
+.require('aws', 'aws-sdk', 'server')
+.require('awsConfig', '../../config/aws', 'server')
 .on('choose-file', {
 	name: 'start',
 	method: 'local',
@@ -51,6 +53,13 @@ module.exports = Willow.createClass({
 	method: 'post',
 	dependencies: [],
 	run: function(e, resolve, reject) {
+		console.log(this);
+		var s3 = new this.requires.aws.S3({
+			accessKeyId: this.requires.awsConfig.accessKeyId,
+			secretAccessKey: this.requires.awsConfig.secretAccessKey
+		});
 		console.log('upload-file:process', e);
 	}
 });
+
+module.exports = FileUpload;

@@ -1,6 +1,6 @@
 'use strict';
 var Willow = require('willow-component');
-module.exports = Willow.createClass({
+var App = Willow.createClass({
 	render: function() {
 		var FileUploadComponent = this.requires.FileUploadComponent;
 		return <div>
@@ -8,5 +8,6 @@ module.exports = Willow.createClass({
 			<FileUploadComponent />
 		</div>;
 	}
-})
-.require('FileUploadComponent', '../file-upload/index.js', 'both');
+});
+App.require('FileUploadComponent', '../file-upload/index.js', 'both');
+module.exports = App;

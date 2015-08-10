@@ -14,6 +14,7 @@ var source = require('vinyl-source-stream');
 var buffer = require('vinyl-buffer');
 var sourcemaps = require('gulp-sourcemaps');
 var rename = require('gulp-rename');
+var _ = require('lodash');
 // var scripts = require('./gulp/scripts');
 // var styles = require('./gulp/styles');
 // var watch = require('./gulp/watch');
@@ -80,9 +81,10 @@ gulp.task('client-components', function(next) {
 					p = './' + p;
 				}
 				var comp = require(p);
+				console.log(p);
 				var f = genCompClientFile(comp);
-				console.log(path.join('./assets/scripts/components', file));
-				mkdirp(path.join('./assets/scripts/components', file), function(err, data) {
+				// console.log(path.join('./assets/scripts/components', file));
+				mkdirp(path.join('./assets/scripts/components', file), function(err, data2) {
 					fs.writeFile(
 						path.join('./assets/scripts/components', file, 'index.js'),
 						f,
@@ -95,50 +97,101 @@ gulp.task('client-components', function(next) {
 });
 
 function genCompClientFile(comp) {
-	var requires = comp.prototype._willow.requires;
+	var requires = comp.prototype._willow.getRequires();
 	var file = '\'use strict\';\n';
 	file += 'var React = require(\'react\');\n';
 	file += 'var Willow = require(\'willow-component\');\n';
-	file += 'var compJson = '+comp.toString()+';\n';
-	file += 'var Component = Willow.createClass(compJson.contents);\n';
+	file += 'var compJson = '+componentToString(comp)+';\n';
+	file += 'var Component = Willow.createClass(compJson.contents, compJson.events, null, compJson.metadata);\n';
 	file += 'Component.prototype.requires = {};\n';
 
 	for(var i in requires.both) {
-		file += 'Component.prototype.requires[\''+i+'\'] = require(\''+requires.both[i]+'\');\n';
+		file += 'Component.prototype.loadRequire(\''+i+'\', require(\''+requires.both[i]+'\'));\n';
 	}
 	for(var j in requires.client) {
-		file += 'Component.prototype.requires[\''+j+'\'] = require(\''+requires.client[j]+'\');\n';
+		file += 'Component.prototype.loadRequire(\''+j+'\', require(\''+requires.client[j]+'\'));\n';
 	}
-	file += 'Component.prototype._willow.events = compJson.events;\n';
-	file += 'Component.prototype._willow.metadata = compJson.metadata;\n';
+	// file += 'Component.prototype._willow.events = compJson.events;\n';
+	// file += 'Component.prototype._willow.metadata = compJson.metadata;\n';
 	file += 'module.exports = Component;\n';
 	return file;
-	// var requires = comp.requires();
-	// var file = '';
-	// file += 'var React = require(\'react\');\n';
-	// file += 'var WillowComponent = require(\'willow-component/class\');\n';
-	// file += 'var WillowError = require(\'willow-error\');\n';
-	// file += 'var validator = require(\'validator\');\n';
-	// file += 'var _ = require(\'lodash\');\n';
-	// file += 'var underscoreDeepExtend = require(\'underscore-deep-extend\');\n';
-	// file += 'var async = require(\'async\');\n';
-	// file += 'var eventRunner = require(\'willow-component/libs/event-runner\');\n';
-	// file += 'var comp = '+comp.toString()+';\n';
-	// file += 'comp.contents.mixins = comp.contents.mixins || [];\n';
-	// file += 'comp.contents.mixins.unshift({\n';
-	// file += '	componentWillMount: function() {\n';
-	// file += '		this.requires = {};\n';
-	// for(var i in requires.both) {
-	// 	file += '		this.requires[\''+i+'\'] = require(\''+requires.both[i]+'\');\n';
-	// }
-	// for(var j in requires.client) {
-	// 	file += '		this.requires[\''+j+'\'] = require(\''+requires.client[j]+'\');\n';
-	// }
-	// file += '	}\n';
-	// file += '});\n';
-	// file += 'module.exports = (new WillowComponent(comp.contents, comp.events, comp.metadata, comp.requires)).build();';
+}
 
-	// return file;
+function componentToString(comp) {
+	var state = comp.prototype._willow;
+	function recurse(target, tabs) {
+		tabs = tabs || 0;
+		if(_.isFunction(target)) {
+			return target.toString();
+		}
+		else if(_.isArray(target)) {
+			var pieces = [];
+			for(var i=0; i < target.length; i++) {
+				pieces.push(recurse(target[i]), tabs+1);
+			}
+			return '['+pieces.join(',')+']';
+		}
+		else if(_.isObject(target)) {
+			var result = '{\n';
+			var count = 0;
+			for(var j in target) {
+				count++;
+				result += _.repeat('\t', tabs)+'\''+j+'\': ' + recurse(target[j], tabs+1)+',';
+			}
+			if(count) {
+				result = result.substring(0, result.length-1);
+			}
+			result += '}';
+			return result;
+		}
+		else if(_.isString(target)) {
+			return '"'+target.toString()+'"';
+		}
+		else {
+			return target.toString();
+		}
+	}
+
+
+	var results = '{\n';
+
+	// Contents
+	results += '\tcontents: ' + recurse(state.getContents(), 2)+'\n';
+
+	// results += '}';
+
+	// console.log(state.getContents(), results);
+
+	// Events
+	var events = state.getEvents();
+	results += ', events: ';
+	var eventPieces = [];
+	for(var i in events) {
+		var handlerPieces = [];
+		for(var j in events[i]) {
+			if(events[i][j].method.toLowerCase() !== 'local') {
+				events[i][j].run = function(e, resolve, reject) {
+					// stuff goes here
+				};
+			}
+			// if(!localOnly || (localOnly && self._willow.events[i][j].method.toLowerCase() === 'local')) {
+			// 	handlerPieces.push('\''+j+'\': ' + recurse(self._willow.events[i][j]));
+			// }
+			handlerPieces.push('\''+j+'\': ' + recurse(events[i][j]));
+		}
+		eventPieces.push('\''+i+'\': {'+handlerPieces.join(',') + '}');
+	}
+
+	// Metadata
+	var metadata = state.getMetadata();
+
+	results += '{' + eventPieces.join(',') + '}, metadata: ';
+	results += metadata ? metadata.toString() : 'undefined';
+	results += ', requires: ' + JSON.stringify(state.getRequires());
+
+	results += '}';
+
+	return results;
 }
 
 gulp.task('bundle', bundle);

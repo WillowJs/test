@@ -1,3 +1,4 @@
 node_modules
 assets/scripts/bundle.js
 assets/scripts/components/**
+config/aws.js
