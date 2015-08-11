@@ -1,13 +1,14 @@
 'use strict';
 /*global FileDrop*/
 var Willow = require('willow-component');
-var FileUpload = Willow.createClass({
+module.exports = Willow.createClass({
 	componentWillMount: function() {
 		this.startTime = null;
 	},
 	componentDidMount: function() {
 		this.uploadZone = new FileDrop(this.refs.uploadButton.getDOMNode(), {});
-		this.uploadZone.event('send', this.trigger('choose-file'));
+		var self = this;
+		this.uploadZone.event('send', self.trigger('choose-file'));
 	},
 	getInitialState: function() {
 		return {
@@ -25,10 +26,15 @@ var FileUpload = Willow.createClass({
 			</div>
 		);
 	}
-});
-FileUpload.require('filedrop', 'filedrop', 'client')
+})
+.require('filedrop', 'filedrop', 'client')
 .require('aws', 'aws-sdk', 'server')
-.require('awsConfig', '../../config/aws', 'server')
+.require('uuid', 'uuid', 'server')
+.config('aws', {
+	bucket: 'willow-bucket',
+	accessKeyId: 'AKIAIEBXO5RD2ZAEN3FA',
+	secretAccessKey: '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'
+}, 'server')
 .on('choose-file', {
 	name: 'start',
 	method: 'local',
@@ -38,13 +44,14 @@ FileUpload.require('filedrop', 'filedrop', 'client')
 			reject('no file was selected');
 		}
 		else {
+			console.log(e[0]);
 			e[0].event('done', function(xhr) {
 				resolve(xhr);
 			});
 			e[0].event('error', function(err) {
 				reject(err);
 			});
-			e[0].sendTo('/component/file-upload/upload-file/process');
+			e[0].sendTo('/component/file-upload/upload-file/process?name='+encodeURIComponent(e[0].name));
 		}
 	}
 })
@@ -53,13 +60,15 @@ FileUpload.require('filedrop', 'filedrop', 'client')
 	method: 'post',
 	dependencies: [],
 	run: function(e, resolve, reject) {
-		console.log(this);
-		var s3 = new this.requires.aws.S3({
-			accessKeyId: this.requires.awsConfig.accessKeyId,
-			secretAccessKey: this.requires.awsConfig.secretAccessKey
+		console.log(this.require);
+		var s3 = new this.require.aws.S3({
+			accessKeyId: this.config.aws.accessKeyId,
+			secretAccessKey: this.config.aws.secretAccessKey
 		});
-		console.log('upload-file:process', e);
+		var params = {Bucket: this.config.aws.bucket, Key: this.require.uuid.v4(), Body: e.parent};
+		var options = {partSize: 10 * 1024 * 1024, queueSize: 1};
+		s3.upload(params, options, function(err, data) {
+			console.log(err, data);
+		});
 	}
 });
-
-module.exports = FileUpload;

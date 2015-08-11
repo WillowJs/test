@@ -17,8 +17,10 @@
     "lodash": "^3.10.0",
     "react": "^0.13.3",
     "underscore-deep-extend": "0.0.5",
+    "uuid": "^2.0.1",
     "validator": "^3.41.2",
-    "willow-component": "willowjs/willow-component#refactor",
+    "willow-component": "willowjs/willow-component",
+    "willow-context": "willowjs/willow-context",
     "willow-error": "willowjs/willow-error",
     "willow-server": "willowjs/willow-server"
   },

@@ -15,6 +15,7 @@ var buffer = require('vinyl-buffer');
 var sourcemaps = require('gulp-sourcemaps');
 var rename = require('gulp-rename');
 var _ = require('lodash');
+var context = require('willow-context');
 // var scripts = require('./gulp/scripts');
 // var styles = require('./gulp/styles');
 // var watch = require('./gulp/watch');
@@ -48,7 +49,7 @@ b.on('log', gutil.log); // output build logs to terminal
  * SHARED TASKS
  */
 gulp.task('client-components', function(next) {
-
+	console.log('client-components');
 	var componentsDir = './components';
 
 	async.auto({
@@ -73,22 +74,21 @@ gulp.task('client-components', function(next) {
 		write: ['mkdir', 'filter', function(cb, data) {
 			require('node-jsx').install();
 
-			// @todo override require to keep track of what modules are required
-
 			async.each(data.filter, function(file, cb1) {
 				var p = path.join(componentsDir, file);
 				if(p.charAt(0) !== '/' && p.charAt(0) !== '.') {
 					p = './' + p;
 				}
+				delete require.cache[require.resolve(p)];
 				var comp = require(p);
-				console.log(p);
 				var f = genCompClientFile(comp);
-				// console.log(path.join('./assets/scripts/components', file));
 				mkdirp(path.join('./assets/scripts/components', file), function(err, data2) {
 					fs.writeFile(
 						path.join('./assets/scripts/components', file, 'index.js'),
 						f,
-						cb1
+						function() {
+							cb1();
+						}
 					);
 				});
 			}, cb);
@@ -97,22 +97,25 @@ gulp.task('client-components', function(next) {
 });
 
 function genCompClientFile(comp) {
-	var requires = comp.prototype._willow.getRequires();
+	var contextObj = comp.prototype._willow.getContext();
+	var requires = context(contextObj.requires, 'client');
+	var config = context(contextObj.config, 'client');
 	var file = '\'use strict\';\n';
 	file += 'var React = require(\'react\');\n';
 	file += 'var Willow = require(\'willow-component\');\n';
 	file += 'var compJson = '+componentToString(comp)+';\n';
-	file += 'var Component = Willow.createClass(compJson.contents, compJson.events, null, compJson.metadata);\n';
-	file += 'Component.prototype.requires = {};\n';
+	file += 'var Component = Willow.createClass(compJson.contents);\n';
+	file += 'var state = Component.prototype._willow;\n';
+	file += 'var requires = {};\n';
 
-	for(var i in requires.both) {
-		file += 'Component.prototype.loadRequire(\''+i+'\', require(\''+requires.both[i]+'\'));\n';
+	for(var i in requires) {
+		file += 'requires[\''+i+'\'] = require(\''+requires[i]+'\');\n';
 	}
-	for(var j in requires.client) {
-		file += 'Component.prototype.loadRequire(\''+j+'\', require(\''+requires.client[j]+'\'));\n';
-	}
-	// file += 'Component.prototype._willow.events = compJson.events;\n';
-	// file += 'Component.prototype._willow.metadata = compJson.metadata;\n';
+
+	file += 'if(compJson.metadata) state.setMetadata(compJson.metadata);\n';
+	file += 'state.setEvents(compJson.events);\n';
+	file += 'state.setRequires(requires);\n';
+	file += 'state.setConfig('+JSON.stringify(config)+');\n';
 	file += 'module.exports = Component;\n';
 	return file;
 }
@@ -187,8 +190,6 @@ function componentToString(comp) {
 
 	results += '{' + eventPieces.join(',') + '}, metadata: ';
 	results += metadata ? metadata.toString() : 'undefined';
-	results += ', requires: ' + JSON.stringify(state.getRequires());
-
 	results += '}';
 
 	return results;
@@ -268,7 +269,7 @@ function bundle() {
 //  * SERVE TASKS
 //  */
 
-gulp.task('serve', ['client-components', 'bundle', 'server']);
+gulp.task('serve', ['client-components', 'bundle', 'server', 'watch']);
 
 // gulp.task('fonts', function () {
 // 	return gulp.src('node_modules/font-awesome/fonts/*')
@@ -287,16 +288,8 @@ gulp.task('serve', ['client-components', 'bundle', 'server']);
 
 gulp.task('watch', function() {
 	gulp.watch(
-		[
-			'queries/**/*.js',
-			'libs/**/*.js',
-			'config/**/*.js',
-			'routes/**/*.js',
-			'policies/**/*.js',
-			'public/scripts/**/*.jsx',
-			'app.js'
-		],
-		['server']
+		[ 'components/**/*.js' ],
+		[ 'client-components', 'server' ]
 	);
 });
 
