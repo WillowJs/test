@@ -20,6 +20,7 @@ module.exports = Willow.createClass({
 		);
 	}
 })
+.require('validate', './validate-todo.js', 'both')
 .on('submit', {
 	name: 'validate',
 	method: 'local',
@@ -27,8 +28,8 @@ module.exports = Willow.createClass({
 	run: function(e, resolve, reject) {
 		e.nativeEvent.preventDefault();
 		var todo = this.refs.input.getDOMNode().value;
-		if(!todo) {
-			var err = 'You must enter a todo to add.';
+		var err = this.requires.validate(todo);
+		if(!err) {
 			this.setState({error: err});
 			return reject(err);
 		}
@@ -41,7 +42,12 @@ module.exports = Willow.createClass({
 	method: 'post',
 	dependencies: ['validate'],
 	run: function(e, resolve, reject) {
-		console.log(e);
-		reject({face: 'book'});
+		var err = this.requires.validate(e.validate);
+		if(!err) {
+			return reject(err);
+		}
+
+		console.log('good data');
+		//resolve(todo);
 	}
 });

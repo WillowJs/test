@@ -16,6 +16,8 @@ var sourcemaps = require('gulp-sourcemaps');
 var rename = require('gulp-rename');
 var _ = require('lodash');
 var context = require('willow-context');
+var ncp = require('ncp').ncp;
+ncp.limit = 16;
 // var scripts = require('./gulp/scripts');
 // var styles = require('./gulp/styles');
 // var watch = require('./gulp/watch');
@@ -71,9 +73,27 @@ gulp.task('client-components', function(next) {
 				cb(null, data1);
 			});
 		}],
+		// copy: ['mkdir', 'filter', function(cb, data) {
+		// 	require('node-jsx').install();
+
+		// 	async.each(data.filter, function(file, cb1) {
+		// 		var p = path.join(componentsDir, file);
+		// 		if(p.charAt(0) !== '/' && p.charAt(0) !== '.') {
+		// 			p = './' + p;
+		// 		}
+		// 		var dir = path.join('./assets/scripts/components', file);
+		// 		mkdirp(dir, function(err, data2) {
+		// 			ncp(p, dir, function(err2) {
+		// 				if (err2) {
+		// 					return console.error(err);
+		// 				}
+		// 				cb1();
+		// 			});
+		// 		});
+		// 	}, cb);
+		// }],
 		write: ['mkdir', 'filter', function(cb, data) {
 			require('node-jsx').install();
-
 			async.each(data.filter, function(file, cb1) {
 				var p = path.join(componentsDir, file);
 				if(p.charAt(0) !== '/' && p.charAt(0) !== '.') {
