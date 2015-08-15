@@ -26,7 +26,6 @@ var spawn = require('child_process').spawn;
 
 var uglify = require('gulp-uglify');
 // var concat = require('gulp-concat');
-var rename = require('gulp-rename');
 // var sass = require('gulp-sass');
 // var minifyCss = require('gulp-minify-css');
 var server = null;
@@ -73,26 +72,26 @@ gulp.task('client-components', function(next) {
 				cb(null, data1);
 			});
 		}],
-		// copy: ['mkdir', 'filter', function(cb, data) {
-		// 	require('node-jsx').install();
+		copy: ['mkdir', 'filter', function(cb, data) {
+			require('node-jsx').install();
 
-		// 	async.each(data.filter, function(file, cb1) {
-		// 		var p = path.join(componentsDir, file);
-		// 		if(p.charAt(0) !== '/' && p.charAt(0) !== '.') {
-		// 			p = './' + p;
-		// 		}
-		// 		var dir = path.join('./assets/scripts/components', file);
-		// 		mkdirp(dir, function(err, data2) {
-		// 			ncp(p, dir, function(err2) {
-		// 				if (err2) {
-		// 					return console.error(err);
-		// 				}
-		// 				cb1();
-		// 			});
-		// 		});
-		// 	}, cb);
-		// }],
-		write: ['mkdir', 'filter', function(cb, data) {
+			async.each(data.filter, function(file, cb1) {
+				var p = path.join(componentsDir, file);
+				if(p.charAt(0) !== '/' && p.charAt(0) !== '.') {
+					p = './' + p;
+				}
+				var dir = path.join('./assets/scripts/components', file);
+				mkdirp(dir, function(err, data2) {
+					ncp(p, dir, function(err2) {
+						if (err2) {
+							return console.error(err);
+						}
+						cb1();
+					});
+				});
+			}, cb);
+		}],
+		write: ['copy', function(cb, data) {
 			require('node-jsx').install();
 			async.each(data.filter, function(file, cb1) {
 				var p = path.join(componentsDir, file);
@@ -358,12 +357,17 @@ gulp.task('server', function() {
 		}
 		else {
 			console.log('Starting server...');
-			server = spawn('node', ['index']);
+			var env = Object.create(process.env);
+			env.NODE_ENV = 'development';
+			server = spawn('node', ['index'], { env: env });
 			serverRunning = true;
 			server.on('close', function(code) {
 				console.log('Server closed with code ['+code+']');
 				serverRunning = false;
 				startServer();
+			});
+			server.on('error', function(err) {
+				console.log(err);
 			});
 			server.stdout.on('data', function(data) {
 				console.log(data.toString());

@@ -5,6 +5,7 @@
 # short term
 - come up with demo screencast
 - update willow-server to just be express middleware... no need to introduce a new paradigm
+- update gulp code to be a gulp plugin
 
 
 # mid term

@@ -2,8 +2,8 @@
 var Willow = require('willow-component');
 module.exports = Willow.createClass({
 	render: function() {
-		var TodoItem = this.requires.TodoItem;
-		var TodoInput = this.requires.TodoInput;
+		var TodoItem = this.require.TodoItem;
+		var TodoInput = this.require.TodoInput;
 		return <div>
 			<h1>test</h1>
 			<TodoInput />
