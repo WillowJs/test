@@ -30,11 +30,8 @@ module.exports = Willow.createClass({
 .require('filedrop', 'filedrop', 'client')
 .require('aws', 'aws-sdk', 'server')
 .require('uuid', 'uuid', 'server')
-.config('aws', {
-	bucket: 'willow-bucket',
-	accessKeyId: 'AKIAIEBXO5RD2ZAEN3FA',
-	secretAccessKey: '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'
-}, 'server')
+.require('path', 'path', 'server')
+.config('aws', require('../../config/aws'), 'server')
 .on('choose-file', {
 	name: 'start',
 	method: 'local',
@@ -60,15 +57,27 @@ module.exports = Willow.createClass({
 	method: 'post',
 	dependencies: [],
 	run: function(e, resolve, reject) {
-		console.log(this.require);
+		var ext = this.require.path.extname(e.name);
 		var s3 = new this.require.aws.S3({
 			accessKeyId: this.config.aws.accessKeyId,
 			secretAccessKey: this.config.aws.secretAccessKey
 		});
-		var params = {Bucket: this.config.aws.bucket, Key: this.require.uuid.v4(), Body: e.parent};
+		var params = {Bucket: this.config.aws.bucket, Key: this.require.uuid.v4()+ext, Body: e.parent};
 		var options = {partSize: 10 * 1024 * 1024, queueSize: 1};
 		s3.upload(params, options, function(err, data) {
-			console.log(err, data);
+			if(err) {
+				reject({
+					message: err.message,
+					params: {},
+					status: err.statusCode,
+					id: err.code
+				});
+			}
+			else {
+				resolve({
+					url: data.Location
+				});
+			}
 		});
 	}
 });

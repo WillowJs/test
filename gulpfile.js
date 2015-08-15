@@ -22,9 +22,9 @@ var context = require('willow-context');
 // var _ = require('lodash');
 var spawn = require('child_process').spawn;
 
-// var uglify = require('gulp-uglify');
+var uglify = require('gulp-uglify');
 // var concat = require('gulp-concat');
-// var rename = require('gulp-rename');
+var rename = require('gulp-rename');
 // var sass = require('gulp-sass');
 // var minifyCss = require('gulp-minify-css');
 var server = null;
@@ -81,7 +81,7 @@ gulp.task('client-components', function(next) {
 				}
 				delete require.cache[require.resolve(p)];
 				var comp = require(p);
-				var f = genCompClientFile(comp);
+				var f = genCompClientFile(comp, file);
 				mkdirp(path.join('./assets/scripts/components', file), function(err, data2) {
 					fs.writeFile(
 						path.join('./assets/scripts/components', file, 'index.js'),
@@ -96,14 +96,15 @@ gulp.task('client-components', function(next) {
 	}, next);
 });
 
-function genCompClientFile(comp) {
+function genCompClientFile(comp, name) {
 	var contextObj = comp.prototype._willow.getContext();
 	var requires = context(contextObj.requires, 'client');
 	var config = context(contextObj.config, 'client');
 	var file = '\'use strict\';\n';
 	file += 'var React = require(\'react\');\n';
 	file += 'var Willow = require(\'willow-component\');\n';
-	file += 'var compJson = '+componentToString(comp)+';\n';
+	file += 'var ajax = require(\'component-ajax\');\n';
+	file += 'var compJson = '+componentToString(comp, name)+';\n';
 	file += 'var Component = Willow.createClass(compJson.contents);\n';
 	file += 'var state = Component.prototype._willow;\n';
 	file += 'var requires = {};\n';
@@ -120,7 +121,7 @@ function genCompClientFile(comp) {
 	return file;
 }
 
-function componentToString(comp) {
+function componentToString(comp, name) {
 	var state = comp.prototype._willow;
 	function recurse(target, tabs) {
 		tabs = tabs || 0;
@@ -130,7 +131,7 @@ function componentToString(comp) {
 		else if(_.isArray(target)) {
 			var pieces = [];
 			for(var i=0; i < target.length; i++) {
-				pieces.push(recurse(target[i]), tabs+1);
+				pieces.push(recurse(target[i], tabs+1));
 			}
 			return '['+pieces.join(',')+']';
 		}
@@ -173,14 +174,41 @@ function componentToString(comp) {
 		var handlerPieces = [];
 		for(var j in events[i]) {
 			if(events[i][j].method.toLowerCase() !== 'local') {
-				events[i][j].run = function(e, resolve, reject) {
-					// stuff goes here
-				};
+				// var hPiece = '\''+j+'\': {\
+				// 	\
+				// }';
+				// handlerPieces.push(hPiece);
+				handlerPieces.push('\''+j+'\': {\n\
+					name: \''+events[i][j].name+'\',\n\
+					method: \''+events[i][j].method+'\',\n\
+					dependencies: '+JSON.stringify(events[i][j].dependencies)+',\n\
+					run: function(e, resolve, reject) {\n\
+						ajax({\n\
+							url: \'/component/'+name+'/'+i+'/'+events[i][j].name+'\',\n\
+							type: \''+events[i][j].method+'\',\n\
+							dataType: \'json\',\n\
+							data: e.results,\n\
+							success: function(r) {\n\
+								resolve(r);\n\
+							},\
+							error: function(r) {\n\
+								reject(JSON.parse(r.responseText));\n\
+							}\n\
+						});\n\
+					}\n\
+				}');
+				// events[i][j].run = function(e, resolve, reject) {
+				// 	console.log(
+				// 		events[i][j].method.toLowerCase()+
+				// 		' request to /component/'+
+				// 		name+'/'+i+'/'+events[i][j].name
+				// 	);
+				// 	// stuff goes here
+				// };
 			}
-			// if(!localOnly || (localOnly && self._willow.events[i][j].method.toLowerCase() === 'local')) {
-			// 	handlerPieces.push('\''+j+'\': ' + recurse(self._willow.events[i][j]));
-			// }
-			handlerPieces.push('\''+j+'\': ' + recurse(events[i][j]));
+			else {
+				handlerPieces.push('\''+j+'\': ' + recurse(events[i][j]));
+			}
 		}
 		eventPieces.push('\''+i+'\': {'+handlerPieces.join(',') + '}');
 	}
@@ -211,6 +239,13 @@ function bundle() {
 	.pipe(rename('bundle.js'))
 	.pipe(gulp.dest('./assets/scripts'));
 }
+
+gulp.task('jsmin', function() {
+	return gulp.src('assets/scripts/bundle.js')
+	.pipe(uglify())
+	.pipe(rename('bundle.min.js'))
+	.pipe(gulp.dest('assets/scripts'));
+});
 
 // /*
 //  * BUILD TASKS
@@ -270,6 +305,8 @@ function bundle() {
 //  */
 
 gulp.task('serve', ['client-components', 'bundle', 'server', 'watch']);
+
+gulp.task('build', ['client-components', 'bundle', 'jsmin']);
 
 // gulp.task('fonts', function () {
 // 	return gulp.src('node_modules/font-awesome/fonts/*')
